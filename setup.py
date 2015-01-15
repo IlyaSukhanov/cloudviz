@@ -6,12 +6,13 @@ import os.path
 install_requires = [
     "boto",
 #    "gviz-api-py",
-    "pytz",
-    "simplejson",
     "pyramid",
-    "waitress",
+    "pyramid_beaker",
+    "pyramid_whoauth",
+    "pytz",
     "repoze.who",
-    "pyramid_whoauth"
+    "simplejson",
+    "waitress",
 ]
 
 VERSION_REGEX = re.compile(r"""

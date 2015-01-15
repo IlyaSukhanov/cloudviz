@@ -8,6 +8,7 @@ import pyramid
 from pyramid.config import Configurator
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid_whoauth.auth import WhoAuthenticationPolicy
+from pyramid_beaker import set_cache_regions_from_settings
 from repoze.who.config import make_api_factory_with_config
 
 from .security import appauth, RootFactory
@@ -33,6 +34,7 @@ def main(_global_config, **settings):
 
     # Create the Pyramid config
     config = Configurator(settings=settings)
+    set_cache_regions_from_settings(settings)
 
     # Authentication
     config.include("pyramid_whoauth")
