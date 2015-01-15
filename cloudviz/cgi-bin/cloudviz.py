@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """
 cloudviz.py
@@ -32,7 +32,7 @@ import sys
 import cgi
 import operator
 from datetime import datetime, timedelta
-from django.utils import simplejson
+import simplejson
 from pytz import timezone
 import pytz
 

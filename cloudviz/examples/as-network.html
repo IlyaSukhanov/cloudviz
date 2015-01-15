@@ -17,7 +17,7 @@ limitations under the License.
   <head>
     <title>AutoScaling Group Network I/O</title>
     <script type="text/javascript" src="http://www.google.com/jsapi" ></script>
-    <script type="text/javascript" src="json2-min.js" ></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/json2/20140204/json2.js" ></script>
     <script type="text/javascript">
         google.load('visualization', '1', {packages: ['annotatedtimeline']});
     </script>
@@ -29,7 +29,8 @@ limitations under the License.
                             "namespace": "AWS/EC2", // CloudWatch namespace (string)
                             "unit": "Bytes",        // CloudWatch unit (string)
                             "calc_rate": true,      // convert "Sum" statistics to units per second values (boolean)
-                            "dimensions": { "AutoScalingGroupName": "example-group"},
+                            "region": "us-west-2",
+                            "dimensions": { "AutoScalingGroupName": "example"},
                             "cloudwatch_queries":   // (list of dictionaries)
                             [
                                 {
@@ -40,14 +41,14 @@ limitations under the License.
                                                                 
                                 {
                                     "prefix": "Out ",
-                                    "statistics": ["Average"]
+                                    "statistics": ["Average"],
                                     "metric": "NetworkOut"
                                 }
                             ]
                          };
 
                 var qs = JSON.stringify(qa);
-                var url = 'http://' + window.location.host + '/cloudviz?qs=' + qs;
+                var url = 'http://' + window.location.host + '/cgi-bin/cloudviz.py?qs=' + qs;
                 var query = new google.visualization.Query(url);
                 query.send(handleQueryResponse);
         }
