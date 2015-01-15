@@ -1,0 +1,6 @@
+# Manifest file for the egg
+include *.pip
+include *.md
+include *.txt *.ini *.cfg *.rst
+recursive-include cloudviz *.ico *.png *.css *.gif *.jpg *.pt *.txt *.mak *.mako *.js *.html *.xml
+prune test
