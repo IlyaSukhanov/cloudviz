@@ -13,7 +13,7 @@ from repoze.who.config import make_api_factory_with_config
 
 from .security import appauth, RootFactory
 from .version import __version__, __rpm_version__, __git_hash__
-from cloudviz.views import dimensions
+from cloudviz.views import metrics
 
 
 def add_service(config, url_pattern, view_callable, request_method='GET', **kwargs):
@@ -46,7 +46,9 @@ def main(_global_config, **settings):
     # static files such as Pyramid's stock icons
     config.add_static_view('static', 'static', cache_max_age=3600)
 
-    cw_dimensions = dimensions.Dimensions()
-    add_service(config, "dimensions", cw_dimensions.view, 'GET')
+    cw_metrics = metrics.Metrics()
+    add_service(config, "metrics", cw_metrics.dimension_names, 'GET')
+    add_service(config, "metrics/{dimension_name}", cw_metrics.dimension_values, 'GET')
+    add_service(config, "metrics/{dimension_name}/{dimension_value}", cw_metrics.metrics, 'GET')
 
     return config.make_wsgi_app()
