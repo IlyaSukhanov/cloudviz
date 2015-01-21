@@ -28,7 +28,9 @@ class Metrics(object):
         print("getting data")
         next_token = None
         while True:
-            metrics = self.connection.list_metrics(*args, next_token=next_token, **kwargs)
+            metrics = self.connection.list_metrics(
+                *args, next_token=next_token, **kwargs
+            )
             for metric in metrics:
                 yield metric
             next_token = metrics.next_token
@@ -53,16 +55,21 @@ class Metrics(object):
             dimension_list[dname] = list(dvalues)
         return dimension_list
 
+    #TODO break here into model /\ and view \/
+
     def dimension_names(self, request):
         """ JSON representation of all dimension names """
         data = {"dimension_names":self._dimensions().keys()}
-        return Response(body=json.dumps(data, indent=2), content_type=JSON_TYPE)
+        return Response(
+            body=json.dumps(data, indent=2),
+            content_type=JSON_TYPE
+        )
 
     def dimension_values(self, request):
         """ JSON representation of all dimension values for particular name """
         dimension_name = request.matchdict.get("dimension_name")
         if not dimension_name:
-            return Response( "dimension_name unknown", status_code='500')
+            return Response( "dimension_name unknown", status_code=500)
         dimensions = self._dimensions()
         if dimension_name not in dimensions:
             return Response(
@@ -74,7 +81,10 @@ class Metrics(object):
             "dimension_name":dimension_name,
             "dimension_values":dimensions[dimension_name]
         }
-        return Response(body=json.dumps(data, indent=2), content_type=JSON_TYPE)
+        return Response(
+            body=json.dumps(data, indent=2),
+            content_type=JSON_TYPE
+        )
 
     def metrics(self, request):
         dimension_name = request.matchdict.get("dimension_name")
@@ -82,10 +92,11 @@ class Metrics(object):
         if not dimension_name or not dimension_value:
             return Response(
                 "dimension_name / dimension_value unknown",
-                status_code='500'
+                status_code=500
             )
         metrics = [
-            metric.name for metric in self.get_metrics()
+            {"name":metric.name, "namespace":metric.namespace}
+            for metric in self.get_metrics()
             if dimension_name in metric.dimensions
             and dimension_value in metric.dimensions[dimension_name]
         ]
@@ -94,5 +105,8 @@ class Metrics(object):
             "dimension_value":dimension_value,
             "metrics":metrics
         }
-        return Response(body=json.dumps(data, indent=2), content_type=JSON_TYPE)
+        return Response(
+            body=json.dumps(data, indent=2),
+            content_type=JSON_TYPE
+        )
 

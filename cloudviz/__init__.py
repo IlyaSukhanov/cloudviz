@@ -43,12 +43,10 @@ def main(_global_config, **settings):
     config.set_authorization_policy(ACLAuthorizationPolicy())
     config.set_root_factory(RootFactory)
 
-    # static files such as Pyramid's stock icons
-    config.add_static_view('static', 'static', cache_max_age=3600)
-
     cw_metrics = metrics.Metrics()
     add_service(config, "metrics", cw_metrics.dimension_names, 'GET')
     add_service(config, "metrics/{dimension_name}", cw_metrics.dimension_values, 'GET')
     add_service(config, "metrics/{dimension_name}/{dimension_value}", cw_metrics.metrics, 'GET')
 
+    config.add_static_view('/', 'static', cache_max_age=3600)
     return config.make_wsgi_app()
