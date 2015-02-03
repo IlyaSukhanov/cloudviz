@@ -1,43 +1,122 @@
 <html>
   <head>
     <title>CloudViz</title>
+    <!--Load the AJAX API-->
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
   </head>
   <body>
     <form>
-      <select name="dimension_name" id="dimension_name">
+      <select name="dimension_name" id="dimension_name" multiple="multiple" size="10">
       <select/>
-      <select name="dimension_value" id="dimension_value">
+      <select name="dimension_value" id="dimension_value" multiple="multiple" size="10">
       <select/>
-      <select name="metric" id="metric">
+      <select name="metric" id="metric" multiple="multiple" size="10">
       <select/>
     </form>
+    <div id="chart" style="width: 800px; height: 400px;"></div>
   </body>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
   <script>
+    google.load("visualization", "1", {packages: ['annotationchart']});
+
+    function handleQueryResponse(response) {
+      if (response.isError()) {
+        alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+        return;
+      }
+
+      var data = response.getDataTable();
+      var container = document.getElementById('chart');
+      var visualization = new google.visualization.AnnotationChart(container);
+      visualization.draw(data, {legend: 'bottom', displayZoomButtons: false, dateFormat: "yyyy-MM-dd HH:mm:ss"});
+      google.visualization.events.addListener(visualization, 'rangechange', rangechange_handler);
+    }
+
+    function drawVisualization(source, start_time, end_time) {
+      if (end_time === undefined || start_time === undefined){
+        end_time = new Date();
+        start_time = new Date();
+        start_time.setFullYear(start_time.getFullYear()-1);
+      }
+
+      var period = ((end_time - start_time)/1000) / max_samples;
+      period = period - (period % 60);
+      var query = new google.visualization.Query(
+
+        window.location.protocol + '//' + window.location.host + source +
+        '?end_time=' + end_time.toISOString() +
+        '&start_time=' + start_time.toISOString() +
+        '&period=' + Math.max(period, 60)
+      );
+
+      // Send the query with a callback function.
+      query.setTimeout(10);
+      query.send(handleQueryResponse);
+    }
+
+    function rangechange_handler(e) {
+      if (ratechange_debounce) {
+        clearTimeout(ratechange_debounce);
+      }
+      ratechange_debounce = setTimeout(function() {
+        ratechange_debounce = null;
+        console.log('You changed the range to ', e['start'], ' and ', e['end']);
+        drawVisualization($("#metric option:selected").val(), e['start'], e['end']);
+      }, 500);
+    }
+
+
+    // Set a callback to run when the Google Visualization API is loaded.
+    var ratechange_debounce;
+    var max_samples = 300;
+    //google.setOnLoadCallback(drawVisualization);
+
+    // /\ graph above, select boxes below \/
     $(function() {
-        function dimension_names(select_object, url_path_prefix, json_name)
-        {
+        function populate_options(select_object, url_path_prefix, json_name){
           $("option", select_object).remove();
           var resp = $.ajax({
           type: "GET",
           url: url_path_prefix,
           dataType: "json",
           }).then(function(data){
-            $.each(data[json_name], function(index, name)
+            $.each(data[json_name], function(index, value)
             {
-                console.log("foo");
-                var select_option=$("<option/>");
-                select_option.attr("value", name);
-                select_option.text(name);
-                select_object.append(select_option);
+              var select_option=$("<option/>");
+              var label;
+              if ( json_name == "metrics"){
+                select_option.attr("value", "/datapoints/" + value["namespace"].replace('/', '~') + "/" + data["dimension_name"] + "/" + data["dimension_value"] + "/" + value["name"]);
+                label = value["name"];
+              }else{
+                select_option.attr("value", url_path_prefix + "/" + value);
+                label = value;
+              }
+              select_option.text(label);
+              select_object.append(select_option);
             });
-          });
-          select_object.change(function(){
-            var name=$(this).find("option:selected").text();
-            dimension_names($("#dimension_value"), url_path_prefix + "/" + name, "dimension_values");
-          });
+          })  ;
         }
-        dimension_names($("#dimension_name"), "metrics", "dimension_names");
+        function child_populate_handler(pselect, cselect, json_name){
+          console.log(pselect.find("option:selected"));
+          var parent_value = pselect.find("option:selected").val();
+          populate_options(cselect, parent_value, json_name);
+        }
+
+
+        var dimension_name = $("#dimension_name");
+        var dimension_value = $("#dimension_value");
+        var metric = $("#metric");
+        populate_options(dimension_name, "metrics", "dimension_names");
+        dimension_name.change(function(){
+          child_populate_handler($(this), dimension_value, "dimension_values");
+        });
+        dimension_value.change(function(){
+          child_populate_handler($(this), metric, "metrics");
+        });
+        metric.change(function(){
+          var name=$(this).find("option:selected").val();
+          drawVisualization(name);
+        });
     });
   </script>
-</html
+</html>
