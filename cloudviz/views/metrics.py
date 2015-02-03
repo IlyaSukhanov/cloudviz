@@ -1,3 +1,7 @@
+"""
+Query available cloudwatch metric names
+"""
+
 from collections import defaultdict
 
 from pyramid.response import Response
@@ -10,12 +14,18 @@ JSON_TYPE = 'application/json'
 
 
 class Metrics(object):
+    """
+    Query available cloudwatch metric names
+    """
 
     def __init__(self, connection=None):
         self._connection = connection
 
     @property
     def connection(self):
+        """
+        lazy cloudwatch connection object
+        """
         if not self._connection:
             self._connection = CloudWatchConnection()
         return self._connection
@@ -55,11 +65,11 @@ class Metrics(object):
             dimension_list[dname] = list(dvalues)
         return dimension_list
 
-    #TODO break here into model /\ and view \/
+    # TODO break here into model /\ and view \/
 
     def dimension_names(self, request):
         """ JSON representation of all dimension names """
-        data = {"dimension_names":self._dimensions().keys()}
+        data = {"dimension_names": self._dimensions().keys()}
         return Response(
             body=json.dumps(data, indent=2),
             content_type=JSON_TYPE
@@ -69,7 +79,7 @@ class Metrics(object):
         """ JSON representation of all dimension values for particular name """
         dimension_name = request.matchdict.get("dimension_name")
         if not dimension_name:
-            return Response( "dimension_name unknown", status_code=500)
+            return Response("dimension_name unknown", status_code=500)
         dimensions = self._dimensions()
         if dimension_name not in dimensions:
             return Response(
@@ -78,8 +88,8 @@ class Metrics(object):
             )
 
         data = {
-            "dimension_name":dimension_name,
-            "dimension_values":dimensions[dimension_name]
+            "dimension_name": dimension_name,
+            "dimension_values": dimensions[dimension_name]
         }
         return Response(
             body=json.dumps(data, indent=2),
@@ -87,6 +97,9 @@ class Metrics(object):
         )
 
     def metrics(self, request):
+        """
+        Handle metrics request and generate appropriate restful reply
+        """
         dimension_name = request.matchdict.get("dimension_name")
         dimension_value = request.matchdict.get("dimension_value")
         if not dimension_name or not dimension_value:
@@ -95,18 +108,17 @@ class Metrics(object):
                 status_code=500
             )
         metrics = [
-            {"name":metric.name, "namespace":metric.namespace}
+            {"name": metric.name, "namespace": metric.namespace}
             for metric in self.get_metrics()
             if dimension_name in metric.dimensions
             and dimension_value in metric.dimensions[dimension_name]
         ]
         data = {
-            "dimension_name":dimension_name,
-            "dimension_value":dimension_value,
-            "metrics":metrics
+            "dimension_name": dimension_name,
+            "dimension_value": dimension_value,
+            "metrics": metrics
         }
         return Response(
             body=json.dumps(data, indent=2),
             content_type=JSON_TYPE
         )
-

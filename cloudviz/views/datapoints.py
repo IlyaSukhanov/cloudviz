@@ -1,11 +1,13 @@
+"""
+Provides view of cloudwatch metrics
+"""
+
 import logging
 from pytz import utc
 from datetime import datetime, timedelta
-import operator
 from collections import OrderedDict
 
 from pyramid.response import Response
-import simplejson as json
 from iso8601 import parse_date
 import gviz_api
 from boto.ec2.cloudwatch import CloudWatchConnection
@@ -18,26 +20,36 @@ DEFAULT_UNIT = 'None'
 AWS_STATISTICS = ['Average', 'Sum', 'SampleCount', 'Maximum', 'Minimum']
 AWS_UNITS = [
     'None', 'Seconds', 'Microseconds', 'Milliseconds', 'Bytes', 'Kilobytes',
-    'Megabytes','Gigabytes', 'Terabytes', 'Bits', 'Kilobits', 'Megabits',
+    'Megabytes', 'Gigabytes', 'Terabytes', 'Bits', 'Kilobits', 'Megabits',
     'Gigabits', 'Terabits', 'Percent', 'Count', 'Bytes/Second',
     'Kilobytes/Second', 'Megabytes/Second', 'Gigabytes/Second',
     'Terabytes/Second', 'Bits/Second', 'Kilobits/Second', 'Megabits/Second',
     'Gigabits/Second', 'Terabits/Second', 'Count/Second',
 ]
 
+
 class Datapoints(object):
+    """
+    Provides view of cloudwatch metrics
+    """
 
     def __init__(self, connection=None):
         self._connection = connection
 
     @property
     def connection(self):
+        """
+        Lazy cloudwatch connection object
+        """
         if not self._connection:
             self._connection = CloudWatchConnection()
         return self._connection
 
     @staticmethod
     def extract_data_format(sample_row):
+        """
+        Evaluate data format to be passed in as description to gviz
+        """
         data_format = OrderedDict()
         data_format["Timestamp"] = ("datetime", "Time")
         for statistic in AWS_STATISTICS:
@@ -46,17 +58,23 @@ class Datapoints(object):
                     label = statistic
                 else:
                     label = "{0} {1}".format(statistic, sample_row["Unit"])
-                data_format[statistic] = ("number",label)
+                data_format[statistic] = ("number", label)
         return data_format
 
     @staticmethod
     def drop_column(data, column_name):
+        """
+        Drop column from data returned by cloudwatch
+        """
         for row in data:
             del(row[column_name])
         return data
 
     def get_points(self, namespace, dimensions, metric, period,
                    start_time, end_time, statistic, unit, tqx):
+        """
+        Return gviz friendly representation of cloudwatch data
+        """
         unit = unit if unit != "None" else None
         results = self.connection.get_metric_statistics(
             period, start_time, end_time, metric,
@@ -64,7 +82,7 @@ class Datapoints(object):
         )
 
         data_format = Datapoints.extract_data_format(results[0])
-        data = Datapoints.drop_column(results ,u'Unit')
+        data = Datapoints.drop_column(results, u'Unit')
 
         data_table = gviz_api.DataTable(data_format)
         data_table.LoadData(data)
@@ -74,14 +92,15 @@ class Datapoints(object):
             req_id=tqx['reqId']
         )
 
-
     def points(self, request):
+        """
+        Return gviz compatible data within specified parameters
+        """
         namespace = request.matchdict.get("namespace")
         namespace = namespace.replace("~", "/")
-        #namespace = namespace.replace("~", "%2F")
-        dimensions = {
-            request.matchdict.get("dimension_name"):request.matchdict.get("dimension_value")
-        }
+        dimension_name = request.matchdict.get("dimension_name")
+        dimension_value = request.matchdict.get("dimension_value")
+        dimensions = {dimension_name: dimension_value}
         metric = request.matchdict.get("metric")
 
         try:
@@ -134,4 +153,3 @@ class Datapoints(object):
                 "Failed to fetch data points".format(unit),
                 status_code=500
             )
-
