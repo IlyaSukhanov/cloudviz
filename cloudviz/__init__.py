@@ -14,6 +14,7 @@ from repoze.who.config import make_api_factory_with_config
 from .security import appauth, RootFactory
 from .version import __version__, __rpm_version__, __git_hash__
 from cloudviz.views import metrics
+from cloudviz.views import datapoints
 
 
 def add_service(config, url_pattern, view_callable, request_method='GET', **kwargs):
@@ -47,6 +48,9 @@ def main(_global_config, **settings):
     add_service(config, "metrics", cw_metrics.dimension_names, 'GET')
     add_service(config, "metrics/{dimension_name}", cw_metrics.dimension_values, 'GET')
     add_service(config, "metrics/{dimension_name}/{dimension_value}", cw_metrics.metrics, 'GET')
+
+    cw_points = datapoints.Datapoints()
+    add_service(config, "datapoints/{namespace}/{dimension_name}/{dimension_value}/{metric}", cw_points.points, 'GET')
 
     config.add_static_view('/', 'static', cache_max_age=3600)
     return config.make_wsgi_app()

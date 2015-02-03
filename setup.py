@@ -5,7 +5,8 @@ import os.path
 
 install_requires = [
     "boto",
-#    "gviz-api-py",
+    "gviz-api-py",
+    "iso8601",
     "pyramid",
     "pyramid_beaker",
     "pyramid_whoauth",
