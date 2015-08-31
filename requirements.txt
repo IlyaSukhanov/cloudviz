@@ -1,3 +1,2 @@
 #  Please add requirements to setup.py
---find-links https://code.google.com/p/google-visualization-python/
 -e .

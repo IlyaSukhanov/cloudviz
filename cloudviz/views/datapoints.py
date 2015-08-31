@@ -6,10 +6,10 @@ import logging
 from pytz import utc
 from datetime import datetime, timedelta
 from collections import OrderedDict
+import simplejson as json
 
 from pyramid.response import Response
 from iso8601 import parse_date
-import gviz_api
 from boto.ec2.cloudwatch import CloudWatchConnection
 
 JSON_TYPE = 'application/json'
@@ -80,17 +80,24 @@ class Datapoints(object):
             period, start_time, end_time, metric,
             namespace, [statistic], dimensions, unit
         )
+        logging.debug("Results: {}".format(results))
 
         data_format = Datapoints.extract_data_format(results[0])
         data = Datapoints.drop_column(results, u'Unit')
+        def date_serializer(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            else:
+                return obj
+        return json.dumps(data, default=date_serializer)
 
-        data_table = gviz_api.DataTable(data_format)
-        data_table.LoadData(data)
-        return data_table.ToJSonResponse(
-            columns_order=data_format.keys(),
-            order_by=u'Timestamp',
-            req_id=tqx['reqId']
-        )
+        #data_table = gviz_api.DataTable(data_format)
+        #data_table.LoadData(data)
+        #return data_table.ToJSonResponse(
+        #    columns_order=data_format.keys(),
+        #    order_by=u'Timestamp',
+        #    req_id=tqx['reqId']
+        #)
 
     def points(self, request):
         """
@@ -146,6 +153,7 @@ class Datapoints(object):
                 namespace, dimensions, metric, period,
                 start_time, end_time, statistic, unit, tqx
             )
+            print(data)
             return Response(body=data, content_type=JSON_TYPE)
         except:
             logging.exception("Failed to fetch points")

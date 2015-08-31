@@ -35,7 +35,6 @@ class Metrics(object):
         Yield one metric at a time until all are exhausted or
         the apocalypse is upon us
         """
-        print("getting data")
         next_token = None
         while True:
             metrics = self.connection.list_metrics(
