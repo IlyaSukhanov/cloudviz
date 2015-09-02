@@ -68,7 +68,7 @@ class Metrics(object):
 
     def dimension_names(self, request):
         """ JSON representation of all dimension names """
-        data = {"dimension_names": self._dimensions().keys()}
+        data = {"dimension_names": sorted(self._dimensions().keys())}
         return Response(
             body=json.dumps(data, indent=2),
             content_type=JSON_TYPE
@@ -88,7 +88,7 @@ class Metrics(object):
 
         data = {
             "dimension_name": dimension_name,
-            "dimension_values": dimensions[dimension_name]
+            "dimension_values": sorted(dimensions[dimension_name])
         }
         return Response(
             body=json.dumps(data, indent=2),
@@ -115,7 +115,7 @@ class Metrics(object):
         data = {
             "dimension_name": dimension_name,
             "dimension_value": dimension_value,
-            "metrics": metrics
+            "metrics": sorted(metrics)
         }
         return Response(
             body=json.dumps(data, indent=2),

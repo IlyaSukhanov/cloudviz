@@ -1,5 +1,5 @@
 """
-Provides view of cloudwatch metrics
+Provides view of cloudwatch metric data
 """
 
 import logging
@@ -48,7 +48,7 @@ class Datapoints(object):
     @staticmethod
     def extract_data_format(sample_row):
         """
-        Evaluate data format to be passed in as description to gviz
+        Return dict describing what type of fields we have and what units they are.
         """
         data_format = OrderedDict()
         data_format["Timestamp"] = ("datetime", "Time")
@@ -62,46 +62,53 @@ class Datapoints(object):
         return data_format
 
     @staticmethod
-    def drop_column(data, column_name):
-        """
-        Drop column from data returned by cloudwatch
-        """
-        for row in data:
-            del(row[column_name])
-        return data
+    def date_serializer(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        else:
+            return obj
 
     def get_points(self, namespace, dimensions, metric, period,
-                   start_time, end_time, statistic, unit, tqx):
+                   start_time, end_time, statistic, unit):
         """
-        Return gviz friendly representation of cloudwatch data
+        Return nvd3 friendly representation of cloudwatch data
+        looks something like:
+        [
+         {
+           "key":"Series name"
+           "units":"Unit"
+           "values":[ {"x":x0, "y":y0}, {"x":x1, "y":y1} ... ]
+         }, {
+           "key":"Another series"
+           ...
+         }
+        ]
         """
         unit = unit if unit != "None" else None
-        results = self.connection.get_metric_statistics(
+        records = self.connection.get_metric_statistics(
             period, start_time, end_time, metric,
             namespace, [statistic], dimensions, unit
         )
-        logging.debug("Results: {}".format(results))
-
-        data_format = Datapoints.extract_data_format(results[0])
-        data = Datapoints.drop_column(results, u'Unit')
-        def date_serializer(obj):
-            if isinstance(obj, datetime):
-                return obj.isoformat()
-            else:
-                return obj
-        return json.dumps(data, default=date_serializer)
-
-        #data_table = gviz_api.DataTable(data_format)
-        #data_table.LoadData(data)
-        #return data_table.ToJSonResponse(
-        #    columns_order=data_format.keys(),
-        #    order_by=u'Timestamp',
-        #    req_id=tqx['reqId']
-        #)
+        if len(records) > 0:
+            data_format = Datapoints.extract_data_format(records[0])
+            record_units = data_format[statistic][1]
+            data_values = [
+                {"x":record[u'Timestamp'], "y":record[statistic]}
+                for record in sorted(records, key=lambda k: k[u'Timestamp'])
+            ]
+        else:
+            record_units = None
+            data_values = []
+        return {
+            "key":".".join([namespace, dimensions.values()[0], metric]),
+            "units": record_units,
+            "statistic":statistic,
+            "values":data_values,
+        }
 
     def points(self, request):
         """
-        Return gviz compatible data within specified parameters
+        Return d3 compatible data within specified parameters
         """
         namespace = request.matchdict.get("namespace")
         namespace = namespace.replace("~", "/")
@@ -143,21 +150,18 @@ class Datapoints(object):
                 status_code=400
             )
 
-        # tqx is documented here: http://goo.gl/BHMzVx
-        tqx = dict(
-            pair.split(":") for pair in request.params.get("tqx").split(";")
-        )
-
         try:
-            data = self.get_points(
+            series_data = self.get_points(
                 namespace, dimensions, metric, period,
-                start_time, end_time, statistic, unit, tqx
+                start_time, end_time, statistic, unit
             )
-            print(data)
-            return Response(body=data, content_type=JSON_TYPE)
         except:
             logging.exception("Failed to fetch points")
             return Response(
                 "Failed to fetch data points".format(unit),
                 status_code=500
             )
+        data= [series_data]
+        json_data = json.dumps(data, default=Datapoints.date_serializer)
+        logging.debug(json_data)
+        return Response(body=json_data, content_type=JSON_TYPE)

@@ -1,0 +1,8 @@
+{
+  "name": "CloudViz",
+  "version": "2.0.0",
+  "dependencies": {
+    "nvd3": "~1.8.1"
+  },
+  "private": true
+}

@@ -51,7 +51,12 @@ def main(_global_config, **settings):
     config.set_root_factory(RootFactory)
 
     cw_metrics = metrics.Metrics()
-    add_service(config, "metrics", cw_metrics.dimension_names, 'GET')
+    add_service(
+        config,
+        "metrics",
+        cw_metrics.dimension_names,
+        'GET'
+    )
     add_service(
         config,
         "metrics/{dimension_name}",

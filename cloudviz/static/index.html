@@ -1,8 +1,10 @@
 <html>
   <head>
     <title>CloudViz</title>
-    <!--Load the AJAX API-->
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <link href="bower_components/nvd3/build/nv.d3.min.css" rel="stylesheet" type="text/css">
+    <script src="bower_components/d3/d3.min.js"></script>
+    <script src="bower_components/nvd3/build/nv.d3.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
   </head>
   <body>
     <form>
@@ -13,63 +15,66 @@
       <select name="metric" id="metric" multiple="multiple" size="10">
       <select/>
     </form>
-    <div id="chart" style="width: 800px; height: 400px;"></div>
+    <div id="chart" style="width: 800px; height: 400px;">
+    <svg></svg>
+    </div>
   </body>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
   <script>
-    google.load("visualization", "1", {packages: ['annotationchart']});
 
-    function handleQueryResponse(response) {
-      if (response.isError()) {
-        alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
-        return;
-      }
+    var max_samples = 300;
+    var data = [ {"key": "Foo", "values":[]}]
+    var chart = nv.models.lineChart()
+                  .x(function(d) {return d3.time.format("%Y-%m-%dT%H:%M:%S").parse(d['x']);})
+                  .color(d3.scale.category10().range());
 
-      var data = response.getDataTable();
-      var container = document.getElementById('chart');
-      var visualization = new google.visualization.AnnotationChart(container);
-      visualization.draw(data, {legend: 'bottom', displayZoomButtons: false, dateFormat: "yyyy-MM-dd HH:mm:ss"});
-      google.visualization.events.addListener(visualization, 'rangechange', rangechange_handler);
-    }
+    function formatDate(dateString) {
+      console.log(dateString)
+      var dateStamp = new Date(dateString)
+      console.log(dateStamp)
+      return d3.time.format.iso(dateStamp);
+    };
 
-    function drawVisualization(source, start_time, end_time) {
+    function loadGraph() {
+      d3.select('#chart svg')
+          .datum(data)
+        .transition().duration(500)
+          .call(chart);
+      nv.utils.windowResize(chart.update);
+      return chart;
+    };
+
+    function refresh(source, start_time, end_time){
       if (end_time === undefined || start_time === undefined){
         end_time = new Date();
         start_time = new Date();
         start_time.setFullYear(start_time.getFullYear()-1);
       }
-
       var period = ((end_time - start_time)/1000) / max_samples;
       period = period - (period % 60);
-      var query = new google.visualization.Query(
-
-        window.location.protocol + '//' + window.location.host + source +
+      var url = window.location.protocol + '//' + window.location.host + source +
         '?end_time=' + end_time.toISOString() +
         '&start_time=' + start_time.toISOString() +
-        '&period=' + Math.max(period, 60)
-      );
-
-      // Send the query with a callback function.
-      query.setTimeout(10);
-      query.send(handleQueryResponse);
+        '&period=' + Math.max(period, 60);
+      $.ajax({
+        url: url,
+        type: "get",
+        success: function(result){
+          console.log(result);
+          data[0].key=result[0].key;
+          data[0].values=result[0].values;
+          chart.yAxis.axisLabel(result[0].units);
+          chart.update();
+        }
+      })
     }
 
-    function rangechange_handler(e) {
-      if (ratechange_debounce) {
-        clearTimeout(ratechange_debounce);
-      }
-      ratechange_debounce = setTimeout(function() {
-        ratechange_debounce = null;
-        console.log('You changed the range to ', e['start'], ' and ', e['end']);
-        drawVisualization($("#metric option:selected").val(), e['start'], e['end']);
-      }, 500);
-    }
-
-
-    // Set a callback to run when the Google Visualization API is loaded.
-    var ratechange_debounce;
-    var max_samples = 300;
-    //google.setOnLoadCallback(drawVisualization);
+    chart.yAxis
+      .tickFormat(d3.format(',.0f'))
+      .axisLabel('data');
+    chart.xAxis
+      .tickFormat(function(d) { return d3.time.format.utc("%Y-%m-%dT%H:%M:%S.%LZ")(new Date(d)) })
+      .axisLabel('Time');
+    nv.addGraph(loadGraph);
 
     // /\ graph above, select boxes below \/
     $(function() {
@@ -114,8 +119,7 @@
           child_populate_handler($(this), metric, "metrics");
         });
         metric.change(function(){
-          var name=$(this).find("option:selected").val();
-          drawVisualization(name);
+          refresh($(this).find("option:selected").val());
         });
     });
   </script>
